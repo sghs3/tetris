@@ -1,276 +1,533 @@
-import sys
-import os
 
-import pygame
+import random, time, pygame, sys
 from pygame.locals import *
 
-from engine import TextView, ViewBase, Board, Piece, Color
+FPS = 25
+STARTTIME = 0 # for timer
+WINDOWWIDTH = 640
+WINDOWHEIGHT = 480
+BOXSIZE = 20
+BOARDWIDTH = 10
+BOARDHEIGHT = 20
+BLANK = '.'
 
-_print_dim = False
+MOVESIDEWAYSFREQ = 0.15
+MOVEDOWNFREQ = 0.1
 
+XMARGIN = int((WINDOWWIDTH - BOARDWIDTH * BOXSIZE)/2)
+TOPMARGIN = WINDOWHEIGHT-(BOARDHEIGHT*BOXSIZE)-5
 
-class PygameView(ViewBase):
-    """Renders a board in pygame."""
+#For mute
+MUTE = 0
+# Color definitions
+WHITE = (255,255,255)
+GRAY = (185,185,185)
+BLACK = (0,0,0)
+COLOR1 = (246,143,160)
+LIGHTCOLOR1 = (255,163,180)
+COLOR2 = (160,158,214)
+LIGHTCOLOR2 = (180,178,234)
+COLOR3 = (178,162,150)
+LIGHTCOLOR3 = (198,182,170)
+COLOR4 = (149,212,122)
+LIGHTCOLOR4 = (169,232,142)
+COL = (82,204,206)
 
-    COLOR_MAP = {
-        Color.CLEAR: pygame.Color(255, 255, 255),
-        Color.RED: pygame.Color(255, 0, 0),
-        Color.BLUE: pygame.Color(0, 255, 0),
-        Color.GREEN: pygame.Color(0, 0, 255),
-        Color.YELLOW: pygame.Color(255, 255, 0),
-        Color.MAGENTA: pygame.Color(255, 0, 255),
-        Color.CYAN: pygame.Color(0, 255, 255),
-        Color.ORANGE: pygame.Color(255, 140, 0)
-    }
+BORDERCOLOR = COL
+BGCOLOR = BLACK
+TEXTCOLOR = WHITE
+TEXTSHADOWCOLOR=GRAY
+COLORS=(COLOR1,COLOR2,COLOR3,COLOR4)
+LIGHTCOLORS=(LIGHTCOLOR1,LIGHTCOLOR2,LIGHTCOLOR3,LIGHTCOLOR4)
+assert len(COLORS) == len(LIGHTCOLORS) # each color must have light color
 
-    BOARD_BORDER_SIZE = 5
-    SCORE_PADDING = 5
-    BORDER_SIZE = 4
-    BORDER_FADE = pygame.Color(50, 50, 50)
+TEMPLATEWIDTH = 5
+TEMPLATEHEIGHT = 5
 
-    def __init__(self, surf, fonts):
-        ViewBase.__init__(self)
-        self.surf = surf
-        self.view_width = surf.get_width()
-        self.view_height = surf.get_height()
-        self.box_size = 10
-        self.padding = (0, 0)
-        self.go_font = fonts["game_over"]
-        self.sc_font = fonts["score"]
-        self.font_color = pygame.Color(200, 0, 0)
-        self.score = None
-        self.level = None
+S_SHAPE_TEMPLATE = [['.....',
+                     '.....',
+                     '..OO.',
+                     '.OO..',
+                     '.....'],
+                    ['.....',
+                     '..O..',
+                     '..OO.',
+                     '...O.',
+                     '.....']]
 
-        self.end_msg = self.go_font.render("GAME OVER", True, self.font_color)
+Z_SHAPE_TEMPLATE = [['.....',
+                     '.....',
+                     '.OO..',
+                     '..OO.',
+                     '.....'],
+                    ['.....',
+                     '..O..',
+                     '.OO..',
+                     '.O...',
+                     '.....']]
 
-    # Public interface to views
-    def set_size(self, cols, rows):
-        ViewBase.set_size(self, cols, rows)
-        self.calc_dimensions()
+I_SHAPE_TEMPLATE = [['..O..',
+                     '..O..',
+                     '..O..',
+                     '..O..',
+                     '.....'],
+                    ['.....',
+                     '.....',
+                     'OOOO.',
+                     '.....',
+                     '.....']]
 
-    def set_score(self, score):
-        self.score = score
+O_SHAPE_TEMPLATE = [['.....',
+                     '.....',
+                     '.OO..',
+                     '.OO..',
+                     '.....']]
 
-    def set_level(self, level):
-        if self.level != level:
-            pygame.event.post(pygame.event.Event(Tetris.LEVEL_UP, level=level))
-        self.level = level
+J_SHAPE_TEMPLATE = [['.....',
+                     '.O...',
+                     '.OOO.',
+                     '.....',
+                     '.....'],
+                    ['.....',
+                     '..OO.',
+                     '..O..',
+                     '..O..',
+                     '.....'],
+                    ['.....',
+                     '.....',
+                     '.OOO.',
+                     '...O.',
+                     '.....'],
+                    ['.....',
+                     '..O..',
+                     '..O..',
+                     '.OO..',
+                     '.....']]
 
-    def show(self):
-        self.draw_board()
-        self.show_score()
+L_SHAPE_TEMPLATE = [['.....',
+                     '...O.',
+                     '.OOO.',
+                     '.....',
+                     '.....'],
+                    ['.....',
+                     '..O..',
+                     '..O..',
+                     '..OO.',
+                     '.....'],
+                    ['.....',
+                     '.....',
+                     '.OOO.',
+                     '.O...',
+                     '.....'],
+                    ['.....',
+                     '.OO..',
+                     '..O..',
+                     '..O..',
+                     '.....']]
 
-    def show_score(self):
-        score_height = 0
-        if self.score is not None:
-            score_surf = self.sc_font.render("{:06d}".format(self.score), True, self.font_color)
-            self.surf.blit(score_surf, (self.BOARD_BORDER_SIZE, self.BOARD_BORDER_SIZE))
-            score_height = score_surf.get_height()
+T_SHAPE_TEMPLATE = [['.....',
+                     '..O..',
+                     '.OOO.',
+                     '.....',
+                     '.....'],
+                    ['.....',
+                     '..O..',
+                     '..OO.',
+                     '..O..',
+                     '.....'],
+                    ['.....',
+                     '.....',
+                     '.OOO.',
+                     '..O..',
+                     '.....'],
+                    ['.....',
+                     '..O..',
+                     '.OO..',
+                     '..O..',
+                     '.....']]
 
-        if self.level is not None:
-            level_surf = self.sc_font.render("LEVEL {:02d}".format(self.level), True, self.font_color)
-            level_pos = (self.BOARD_BORDER_SIZE,
-                         self.BOARD_BORDER_SIZE + score_height + self.SCORE_PADDING)
-            self.surf.blit(level_surf, level_pos)
+PIECES = {'S': S_SHAPE_TEMPLATE,
+          'Z': Z_SHAPE_TEMPLATE,
+          'J': J_SHAPE_TEMPLATE,
+          'L': L_SHAPE_TEMPLATE,
+          'I': I_SHAPE_TEMPLATE,
+          'O': O_SHAPE_TEMPLATE,
+          'T': T_SHAPE_TEMPLATE}
 
-    def show_game_over(self):
-        r = self.end_msg.get_rect()
-        self.surf.blit(self.end_msg, (300 - r.width // 2, 300 - r.height // 2))
+def main():
+    global FPSCLOCK, DISPLAYSURF, BASICFONT, BIGFONT, FRAMECOUNT
+    pygame.init()
+    FPSCLOCK = pygame.time.Clock()
+    DISPLAYSURF = pygame.display.set_mode((WINDOWWIDTH,WINDOWHEIGHT))
+    BASICFONT = pygame.font.SysFont('Helvetica Extended Heavy.ttf', 18)
+    BIGFONT = pygame.font.SysFont('Helvetica Rounded Condensed Bold Oblique.ttf', 100)
+    pygame.display.set_caption('TETRIS')
 
-    # Helper methods
-
-    def get_score_size(self):
-        (sw, sh) = self.sc_font.size("000000")
-        (lw, lh) = self.sc_font.size("LEVEL 00")
-        return (max(sw, lw) + self.BOARD_BORDER_SIZE, sh + lh + self.SCORE_PADDING)
-
-    def calc_dimensions(self):
-        horiz_size = (self.view_width - (self.BOARD_BORDER_SIZE * 2)) // self.width
-        vert_size = (self.view_height - (self.BOARD_BORDER_SIZE * 2)) // self.height
-
-        if vert_size > horiz_size:
-            self.box_size = horiz_size
-            self.padding = (self.get_score_size()[0] * 2,
-                            (self.view_height
-                             - self.BOARD_BORDER_SIZE
-                             - (self.height * horiz_size)))
+    showTextScreen("Let's go Tetris!")
+    while True: # game loop
+        if random.randint(0,1) == 0:
+            pygame.mixer.music.load('videogames1.mp3')
         else:
-            self.box_size = vert_size
-            left_padding = max(self.get_score_size()[0] * 2,
-                               (self.view_width
-                                - self.BOARD_BORDER_SIZE
-                                - (self.width * vert_size)))
-            self.padding = (left_padding, 0)
+            pygame.mixer.music.load('videogames2.mp3')
+        pygame.mixer.music.play(-1, 0.0)
+        pygame.time.delay(100)
+        runGame()
+        pygame.mixer.music.stop()
+        showTextScreen('THE END')
 
-        global _print_dim
-        if not _print_dim:
-            print(self.width, self.height)
-            print(self.view_width, self.view_height)
-            print(horiz_size, vert_size)
-            print(self.box_size)
-            print(self.padding)
-            _print_dim = True
+def runGame():
+    global MUTE
+    pygame.time.delay(1000)
+    # setup variable for the start of the game
+    board = getBlankBoard()
+    lastMoveDownTime = time.time()
+    lastMoveSidewaysTime = time.time()
+    lastFallTime = time.time()
+    movingDown = False # note: there is no movingUp variable
+    movingLeft = False
+    movingRight = False
+    score = 0
+    framecount = 0
+    level, fallFreq = calculateLevelAndFallFreq(score)
 
-    def draw_board(self):
-        bg_color = self.COLOR_MAP[Color.CLEAR]
-        self.surf.fill(bg_color - self.BORDER_FADE)
+    fallingPiece = getNewPiece() # the block in play, starting value
+    nextPiece = getNewPiece() # the block on deck, starting value
 
-        X_START = self.BOARD_BORDER_SIZE + (self.padding[1] // 2)
-        Y_START = self.BOARD_BORDER_SIZE + (self.padding[0] // 2)
+    while True: # main game loop
+        if fallingPiece == None:
+            pygame.time.delay(250)
+            # No falling piece in play, so start a new piece at the top
+            fallingPiece = nextPiece
+            nextPiece = getNewPiece()
+            lastFallTime = time.time() # reset lastFallTime
 
-        x = X_START
-        y = Y_START
-        board_rect = (y, x, self.width * self.box_size, self.height * self.box_size)
-        pygame.draw.rect(self.surf, bg_color, board_rect)
-        for col in self.rows:
-            for item in col:
-                self.draw_box(x, y, item)
-                y += self.box_size
-            x += self.box_size
-            y = Y_START
+            if not isValidPosition(board, fallingPiece):
+                return # can't fit a new piece on the board, so game over pal
 
-    def draw_box(self, x, y, color):
-        if color == Color.CLEAR:
-            return
+        checkForQuit()
+        for event in pygame.event.get(): # event handling loop
+            if event.type == KEYUP:
+                if (event.key == K_p):
+                    # Pausing the game
 
-        pg_color = self.COLOR_MAP[color]
-        bd_size = self.BORDER_SIZE
-        bd_color = pg_color - self.BORDER_FADE
+                    DISPLAYSURF.fill(BGCOLOR)
+                    pygame.mixer.music.stop()
+                    pygame.mixer.music.load('cheer_up.mp3')
+                    pygame.mixer.music.play(-1, 0.0)
+                    showTextScreen('Cheer up!') # pause until a key press
+                    pygame.time.delay(100)
+                    lastFallTime = time.time()
+                    lastMoveDownTime = time.time()
+                    lastMoveSidewaysTime = time.time()
+                # stopping left, right, and down movement when releasing button
+                elif (event.key == K_LEFT):
+                    movingLeft = False
+                elif (event.key == K_RIGHT):
+                    movingRight = False
+                elif (event.key == K_DOWN):
+                    movingDown = False
+                elif (event.key == K_m):
+                    if(MUTE == 0):
+                        MUTE = 1
+                        pygame.mixer.music.pause()
+                    else:
+                        MUTE = 0
+                        pygame.mixer.music.unpause()
+            elif event.type == KEYDOWN:
+                # moving the block sideways
+                if (event.key == K_LEFT or event.key == K_a) and isValidPosition(board, fallingPiece, adjX=-1): # adjX=-1 checks 1 space to the left of the block (adjusted)
+                    fallingPiece['x'] -= 1
+                    movingLeft = True
+                    movingRight = False
+                    lastMoveSidewaysTime = time.time()
+                elif (event.key == K_RIGHT or event.key == K_d) and isValidPosition(board, fallingPiece, adjX=1): # adjX=1 checks 1 space to the right of the block (adjusted)
+                    fallingPiece['x'] += 1
+                    movingRight = True
+                    movingLeft = False
+                    lastMoveSidewaysTime = time.time()
 
-        outer_rect = (y, x, self.box_size, self.box_size)
-        inner_rect = (y + bd_size, x + bd_size,
-                      self.box_size - bd_size * 2, self.box_size - bd_size * 2)
+                # rotating block (if there is room to rotate)
+                elif (event.key == K_UP):
+                    # moves to next value in rotation index (% part rolls over value to zero if it exceeds total number of possible rotations)
+                    # e.g. 3%4 = 3, 4%4 = 0, 5%4 = 1. Remember, 4 rotations are counted 0-3 because COMPUTERS!
+                    fallingPiece['rotation'] = (fallingPiece['rotation'] + 1) % len(PIECES[fallingPiece['shape']])
+                    if not isValidPosition(board, fallingPiece):                                                        # if rotating puts it somewhere illegal...
+                        fallingPiece['rotation'] = (fallingPiece['rotation'] - 1) % len(PIECES[fallingPiece['shape']])  # ... rotate it the other way!
+                elif (event.key == K_b): #rotate the other direction (flip the script)
+                    fallingPiece['rotation'] = (fallingPiece['rotation'] - 1) % len(PIECES[fallingPiece['shape']])
+                    if not isValidPosition(board, fallingPiece):
+                        fallingPiece['rotation'] = fallingPiece['rotation'] + 1 % len(PIECES[fallingPiece['shape']])
+                # fast falling with down
+                elif (event.key == K_DOWN or event.key == K_s):
+                    movingDown = True
+                    if isValidPosition(board, fallingPiece, adjY=1):
+                        fallingPiece['y'] += 2 #move the block down two spaces
+                    lastMoveDownTime = time.time()
+                # move the current block all the way down
+                elif event.key == K_SPACE or event.key == K_END:
+                    movingDown = False
+                    movingLeft = False
+                    movingRight = False
+                    for i in range(1, BOARDHEIGHT):
+                        if not isValidPosition(board, fallingPiece, adjY=i):
+                            break
+                    fallingPiece['y'] += i - 1
 
-        pygame.draw.rect(self.surf, bd_color, outer_rect)
-        pygame.draw.rect(self.surf, pg_color, inner_rect)
+        # handle moving the block because of user input
+        if (movingLeft or movingRight) and time.time() - lastMoveSidewaysTime > MOVESIDEWAYSFREQ:
+            if movingLeft and isValidPosition(board, fallingPiece, adjX=-1):
+                fallingPiece['x'] -= 1
+            elif movingRight and isValidPosition(board, fallingPiece, adjX=1):
+                fallingPiece['x'] += 1
+            lastMoveSidewaysTime = time.time()
 
+        if movingDown and time.time() - lastMoveDownTime > MOVEDOWNFREQ and isValidPosition(board, fallingPiece, adjY=1):
+            fallingPiece['y'] += 1
+            lastMoveDownTime = time.time()
 
-class Tetris:
-    DROP_EVENT = USEREVENT + 1
-    LEVEL_UP = USEREVENT + 2
+        # let the piece fall if it is time to fall
+        if time.time() - lastFallTime > fallFreq:
+            # see if the piece has landed
+            if not isValidPosition(board, fallingPiece, adjY=1):
+                # falling piece has landed, set it on the board
+                addToBoard(board, fallingPiece)
+                score += removeCompleteLines(board)
+                level, fallFreq = calculateLevelAndFallFreq(score)
+                fallingPiece = None
+            else:
+                # piece did not land, just move the block down
+                fallingPiece['y'] += 1
+                lastFallTime = time.time()
 
-    def __init__(self, view_type):
-        self.board = Board(10, 20)
-        self.board.generate_piece()
-        self.view_type = view_type
-        self.game_over = False
+        # TIMER LOGIC
+        # http://programarcadegames.com/python_examples/f.php?file=timer.py
+        # Calculate total seconds
+        total_seconds = STARTTIME - (framecount // FPS)
+        if total_seconds < 0:
+            total_seconds = 0
+        # Divide by 60 to get total minutes
+        minutes = total_seconds // 60
+        # Use modulus (remainder) to get seconds
+        seconds = total_seconds % 60
+        # Use python string formatting to format in leading zeros
+        output_string = "Time: {0:02}:{1:02}".format(minutes, seconds)
 
-        if view_type == TextView:
-            def cls():
-                os.system('cls')
-
-            self.show_action = cls
-            self.max_fps = 5
-        else:
-            self.show_action = None
-            self.max_fps = 50
-
-    def key_handler(self, key):
-        if key == K_LEFT:
-            self.board.move_piece(-1, 0)
-        elif key == K_RIGHT:
-            self.board.move_piece(1, 0)
-        elif key == K_UP:
-            self.board.rotate_piece()
-        elif key == K_DOWN:
-            self.board.move_piece(0, 1)
-        elif key == K_a:
-            self.board.rotate_piece(clockwise=False)
-        elif key == K_s:
-            self.board.rotate_piece()
-        elif key == K_SPACE:
-            self.board.full_drop_piece()
-
-    def init(self):
-        pygame.init()
-        pygame.font.init()
-        self.surf = pygame.display.set_mode((600, 600))
-        self.font = None
-
-        if pygame.font.get_init():
-            self.fonts = {}
-            self.fonts["game_over"] = pygame.font.SysFont("ni7seg", 60)
-            self.fonts["score"] = pygame.font.SysFont("ni7seg", 18)
-
-        self.view = self.view_type(self.surf, self.fonts)
-
-    def show_colors(self):
-        self.init()
-
-        print("Fonts:", pygame.font.get_fonts())
-        n = len(Color.colors())
-        self.view.set_size(n + 1, 1)
-        for i in range(n):
-            self.view.render_tile(i + 1, 0, Color.colors()[i])
-        self.view.show()
-
-        while True:
-            for event in pygame.event.get():
-                if event.type == QUIT:
-                    pygame.quit()
-                    sys.exit()
-
-    def get_level_speed(self, level):
-        SPEEDS = {
-            1: 1000,
-            2: 750,
-            3: 500,
-            4: 400,
-            5: 300,
-            6: 250,
-            7: 200,
-            8: 150,
-            9: 125,
-            10: 100,
-            11: 90,
-            12: 80,
-            13: 75
-        }
-
-        if level > 13:
-            return 75 - (5 * (level - 13))
-        else:
-            return SPEEDS[level]
-
-    def render_frame(self):
-        self.board.render(self.view)
-
-        if self.show_action is not None:
-            self.show_action()
-        self.view.show()
-
-        if self.game_over:
-            self.view.show_game_over()
+        # drawing everything on the screen
+        DISPLAYSURF.fill(BGCOLOR)
+        drawBoard(board)
+        drawStatus(score, level, output_string)
+        drawNextPiece(nextPiece)
+        img1 = pygame.image.load('left_side.png')
+        img2 = pygame.image.load('right_side.png')
+        DISPLAYSURF.blit(img1, (0, 0))
+        DISPLAYSURF.blit(img2, (428, 280))
+        if fallingPiece != None:
+            drawPiece(fallingPiece)
 
         pygame.display.update()
+        framecount += 1
+        FPSCLOCK.tick(FPS)
 
-    def main(self):
-        self.init()
-        self.clock = pygame.time.Clock()
-        pygame.time.set_timer(self.DROP_EVENT, self.get_level_speed(1))
+def makeTextObjs(text, font, color):
+    surf = font.render(text, True, color)
+    return surf, surf.get_rect()
 
-        while True:
-            for event in pygame.event.get():
-                if event.type == QUIT:
-                    pygame.quit()
-                    sys.exit()
-                elif event.type == KEYDOWN:
-                    self.key_handler(event.key)
-                elif event.type == self.DROP_EVENT:
-                    self.board.drop_piece()
-                elif event.type == self.LEVEL_UP:
-                    pygame.time.set_timer(self.DROP_EVENT, self.get_level_speed(event.level))
-                    print("new level:", event.level)
+def terminate():
+    pygame.quit()
+    sys.exit()
 
-            if self.board.game_over and not self.game_over:
-                self.game_over = True
-                pygame.time.set_timer(self.DROP_EVENT, 0)
+def checkForKeyPress():
+    # Go through event queue looking for a KEYUP event.
+    # Grab KEYDOWN event to remove them from the event queue.
+    # SEE WORMY CHAPTER!!
+    checkForQuit()
 
-            self.render_frame()
-            self.clock.tick(self.max_fps)
+    for event in pygame.event.get([KEYDOWN, KEYUP]):
+        if event.type == KEYDOWN:
+            continue
+        return event.key
+    return None
+
+def showTextScreen(text):
+    # This function displays large text in the
+    # center of the screen until a key is pressed.
+
+    # Draw the text drop shadow
+    titleSurf, titleRect = makeTextObjs(text, BIGFONT, TEXTSHADOWCOLOR)
+    titleRect.center = (int(WINDOWWIDTH/2), int(WINDOWHEIGHT/2))
+    DISPLAYSURF.blit(titleSurf, titleRect)
+
+    # Draw the text
+    titleSurf, titleRect = makeTextObjs(text, BIGFONT, TEXTCOLOR)
+    titleRect.center = (int(WINDOWWIDTH/2) - 3, int(WINDOWHEIGHT/2) - 3)
+    DISPLAYSURF.blit(titleSurf, titleRect)
+
+    # Draw the additional "Press a key to play." text.
+    pressKeySurf, pressKeyRect = makeTextObjs('Press any key to ROCK!', BASICFONT, TEXTCOLOR)
+    pressKeyRect.center = (int(WINDOWWIDTH/2), int(WINDOWHEIGHT/2) + 100)
+    DISPLAYSURF.blit(pressKeySurf, pressKeyRect)
+
+    while checkForKeyPress() == None:
+        pygame.display.update()
+        FPSCLOCK.tick()
+    pygame.mixer.music.stop()
+    if random.randint(0, 1) == 0:
+        pygame.mixer.music.load('videogames1.mp3')
+    else:
+        pygame.mixer.music.load('videogames2.mp3')
+    pygame.mixer.music.play(-1, 0.0)
+def checkForQuit():
+    for event in pygame.event.get(QUIT): # get all the QUIT events
+        terminate() # terminate if any QUIT events are present
+    for event in pygame.event.get(KEYUP): # get all the KEYUP events
+        if event.key == K_ESCAPE:
+            terminate() # terminate if the KEYUP event was for the Esc key
+        pygame.event.post(event) # put the other KEYUP event objects back
 
 
-if __name__ == "__main__":
-    t = Tetris(PygameView)
-    t.main()
-    # t.show_colors()
+def calculateLevelAndFallFreq(score):
+    # Based on the score, return the level the player is on and
+    # how many seconds pass until a falling piece falls one space
+    level = int(score / 10) + 1
+    fallFreq = 0.27 - (level * 0.02) # fallFrequency will be less than 0 at level 14. This is maximum speed, updating as fast as the game loop.
+    return level, fallFreq
+
+def getNewPiece():
+    # return a random new piece in a random rotation and color
+    shape = random.choice(list(PIECES.keys()))
+    newPiece = {'shape': shape,
+                'rotation': random.randint(0, len(PIECES[shape]) - 1), #random rotation value between 0 and one less than total possible rotations for shape
+                'x': int(BOARDWIDTH / 2) - int(TEMPLATEWIDTH / 2),
+                'y': -2, #start it above the board (less than zero)
+                'color': random.randint(0, len(COLORS)-1)}
+    return newPiece
+
+def addToBoard(board, piece):
+    # fill in the board based on the piece's location, shape, and rotation
+    for x in range(TEMPLATEWIDTH):
+        for y in range (TEMPLATEHEIGHT):
+            if PIECES[piece['shape']][piece['rotation']][y][x] != BLANK:    # if a space on the board is not empty (because a block is there)...
+                board[x + piece['x']][y + piece['y']] = piece['color']      # ... add that piece as solid in the board data structure.
+
+def getBlankBoard():
+    # create and return a new blank board data structure
+    board = []
+    for i in range(BOARDWIDTH):
+        board.append([BLANK] * BOARDHEIGHT)
+    return board
+
+def isOnBoard(x, y):
+    return x >= 0 and x < BOARDWIDTH and y < BOARDHEIGHT
+
+def isValidPosition(board, piece, adjX=0, adjY=0):
+    # Return True if the piece is within the board and not colliding
+    for x in range(TEMPLATEWIDTH):
+        for y in range(TEMPLATEHEIGHT):
+            isAboveBoard = y + piece['y'] + adjY < 0
+            if isAboveBoard or PIECES[piece['shape']][piece['rotation']][y][x] == BLANK:
+                continue
+            if not isOnBoard(x + piece['x'] + adjX, y + piece['y'] + adjY):
+                return False
+            if board[x + piece['x'] + adjX][y + piece['y'] + adjY] != BLANK:
+                return False
+    return True
+
+def isCompleteLine(board, y):
+    # Return True if the line is filled with boxes with no gaps.
+    for x in range(BOARDWIDTH):
+        if board[x][y] == BLANK:
+            return False
+    return True
+
+def removeCompleteLines(board):
+    # Remove any completed lines on the board, move everything above them down, and return the number of complete lines.
+    numLinesRemoved = 0
+    y = BOARDHEIGHT - 1 #start y at the bottom of the board
+    while y >= 0:
+        if isCompleteLine(board, y):
+            # Remove the line and pull boxes down by one line.
+            for pullDownY in range(y, 0, -1):
+                for x in range(BOARDWIDTH):
+                    board[x][pullDownY] = board[x][pullDownY - 1]
+            # Set very top line to blank.
+            # Since pullDown function copies row value down one row, the top row must be cleared or it will just be copied.
+            for x in range(BOARDWIDTH):
+                board[x][0] = BLANK
+            numLinesRemoved += 1
+            # Note on the next iteration of the loop, y is the same.
+            # This is so that if the line that was pulled down is also complete, it will be removed.
+        else:
+            y -= 1 #move on to the check the next row up.
+    return numLinesRemoved
+
+def convertToPixelCoords(boxx, boxy):
+    # Convert the given xy coordinates of the board to xy coordinates of the location on the screen.
+    return (XMARGIN + (boxx * BOXSIZE)), (TOPMARGIN + (boxy * BOXSIZE))
+
+def drawBox(boxx, boxy, color, pixelx=None, pixely=None):
+    # draw a single box (each tetromino piece has 4 boxes) at xy coordinates on the board.
+    # Or, if pixelx and pixely are specified, draw to the pixel coordinates stored in pixelx and pixely (for "Next" piece)
+    if color == BLANK:
+        return
+    if pixelx == None and pixely == None:
+        pixelx, pixely = convertToPixelCoords(boxx, boxy)
+    pygame.draw.rect(DISPLAYSURF, COLORS[color], (pixelx + 1, pixely + 1, BOXSIZE, BOXSIZE))
+    pygame.draw.rect(DISPLAYSURF, LIGHTCOLORS[color], (pixelx + 1, pixely + 1, BOXSIZE - 4, BOXSIZE - 4))
+
+def drawBoard(board):
+    # draw the border around the board
+    pygame.draw.rect(DISPLAYSURF, BORDERCOLOR, (XMARGIN - 3, TOPMARGIN - 7, (BOARDWIDTH * BOXSIZE) + 8, (BOARDHEIGHT * BOXSIZE) + 8), 5)
+
+    # fill the background of the board
+    pygame.draw.rect(DISPLAYSURF, BGCOLOR, (XMARGIN, TOPMARGIN, BOXSIZE * BOARDWIDTH, BOXSIZE * BOARDHEIGHT))
+    # draw the individual boxes on the board
+    for x in range(BOARDWIDTH):
+        for y in range(BOARDHEIGHT):
+            drawBox(x, y, board[x][y])
+
+def drawStatus(score, level, output_string):
+    # draw the score text
+    scoreSurf = BASICFONT.render('Lines: %s' % score, True, TEXTCOLOR)
+    scoreRect = scoreSurf.get_rect()
+    scoreRect.topleft = (WINDOWWIDTH - 150, 20)
+    DISPLAYSURF.blit(scoreSurf, scoreRect)
+
+    # draw the level text
+    levelSurf = BASICFONT.render('Level: %s' % level, True, TEXTCOLOR)
+    levelRect = levelSurf.get_rect()
+    levelRect.topleft = (WINDOWWIDTH - 150, 50)
+    DISPLAYSURF.blit(levelSurf, levelRect)
+
+    # draw the timer
+    #timerSurf = BASICFONT.render(output_string, True, TEXTCOLOR)
+    #timerRect = timerSurf.get_rect()
+    #timerRect.topleft = (WINDOWWIDTH - 150, 250)
+    #DISPLAYSURF.blit(timerSurf, timerRect)
+
+    FPSCLOCK.tick(FPS)
+
+def drawPiece(piece, pixelx=None, pixely=None):
+    shapeToDraw = PIECES[piece['shape']][piece['rotation']]
+    if pixelx == None and pixely == None:
+        # if pixelx and pixely haven't been specified, use the location stored in the piece data structure
+        pixelx, pixely = convertToPixelCoords(piece['x'], piece['y'])
+
+    # draw each of the blocks that make up the piece
+    for x in range(TEMPLATEWIDTH):
+        for y in range(TEMPLATEHEIGHT):
+            if shapeToDraw[y][x] != BLANK:
+                drawBox (None, None, piece['color'], pixelx + (x * BOXSIZE), pixely + (y * BOXSIZE))
+
+def drawNextPiece(piece):
+    # draw the "next" text
+    nextSurf = BASICFONT.render('Next:', True, TEXTCOLOR)
+    nextRect = nextSurf.get_rect()
+    nextRect.topleft = (WINDOWWIDTH - 120, 80)
+    DISPLAYSURF.blit(nextSurf, nextRect)
+    # draw the "next" piece
+    drawPiece(piece, pixelx=WINDOWWIDTH-120, pixely=100)
+
+
+if __name__ == '__main__':
+    main()
+
