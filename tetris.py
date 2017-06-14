@@ -23,22 +23,26 @@ MUTE = 0
 WHITE = (255,255,255)
 GRAY = (185,185,185)
 BLACK = (0,0,0)
-COLOR1 = (246,143,160)
-LIGHTCOLOR1 = (255,163,180)
-COLOR2 = (160,158,214)
-LIGHTCOLOR2 = (180,178,234)
-COLOR3 = (178,162,150)
-LIGHTCOLOR3 = (198,182,170)
-COLOR4 = (149,212,122)
-LIGHTCOLOR4 = (169,232,142)
-COL = (82,204,206)
+PINK = (249,32,142)
+LIGHTPINK = (255,52,162)
+ORANGE = (251,86,49)
+LIGHTORANGE = (255,106,69)
+YELLOW = (254,189,6)
+LIGHTYELLOW = (255,209,26)
+YELLOWISH_GREEN= (113,189,49)
+LIGHTYELLOWIS_GREEN = (189,252,162)
+VIOLET = (143,52,183)
+LIGHTVIOLET = (163,72,203)
+SEMI_GRAY = (157,157,157)
+LIGHTSEMI_GRAY = (177,177,177)
+B_COLOR = (10,226,213)
 
-BORDERCOLOR = COL
+BORDERCOLOR = B_COLOR
 BGCOLOR = BLACK
 TEXTCOLOR = WHITE
 TEXTSHADOWCOLOR=GRAY
-COLORS=(COLOR1,COLOR2,COLOR3,COLOR4)
-LIGHTCOLORS=(LIGHTCOLOR1,LIGHTCOLOR2,LIGHTCOLOR3,LIGHTCOLOR4)
+COLORS=(PINK,ORANGE,YELLOW,YELLOWISH_GREEN,VIOLET,SEMI_GRAY)
+LIGHTCOLORS=(LIGHTPINK,LIGHTORANGE,LIGHTYELLOW,LIGHTYELLOWIS_GREEN,LIGHTVIOLET,LIGHTSEMI_GRAY)
 assert len(COLORS) == len(LIGHTCOLORS) # each color must have light color
 
 TEMPLATEWIDTH = 5
@@ -159,11 +163,11 @@ def main():
     pygame.init()
     FPSCLOCK = pygame.time.Clock()
     DISPLAYSURF = pygame.display.set_mode((WINDOWWIDTH,WINDOWHEIGHT))
-    BASICFONT = pygame.font.SysFont('Helvetica Extended Heavy.ttf', 18)
-    BIGFONT = pygame.font.SysFont('Helvetica Rounded Condensed Bold Oblique.ttf', 100)
+    BASICFONT = pygame.font.SysFont('PrStart.ttf', 18)
+    BIGFONT = pygame.font.SysFont('PrStart.ttf', 100)
     pygame.display.set_caption('TETRIS')
 
-    showTextScreen("Let's go Tetris!")
+    showTextScreen(" ")
     while True: # game loop
         if random.randint(0,1) == 0:
             pygame.mixer.music.load('videogames1.mp3')
@@ -173,7 +177,10 @@ def main():
         pygame.time.delay(100)
         runGame()
         pygame.mixer.music.stop()
+        ending = pygame.image.load('start_ending.png')
+        DISPLAYSURF.blit(ending, (0, 0))
         showTextScreen('THE END')
+
 
 def runGame():
     global MUTE
@@ -210,21 +217,22 @@ def runGame():
                 if (event.key == K_p):
                     # Pausing the game
 
-                    DISPLAYSURF.fill(BGCOLOR)
+                    pause_display = pygame.image.load('CHANGE.png')
+                    DISPLAYSURF.blit(pause_display, (0, 0))
                     pygame.mixer.music.stop()
                     pygame.mixer.music.load('cheer_up.mp3')
                     pygame.mixer.music.play(-1, 0.0)
-                    showTextScreen('Cheer up!') # pause until a key press
+                    showTextScreen('pause') # pause until a key press
                     pygame.time.delay(100)
                     lastFallTime = time.time()
                     lastMoveDownTime = time.time()
                     lastMoveSidewaysTime = time.time()
                 # stopping left, right, and down movement when releasing button
-                elif (event.key == K_LEFT):
+                elif (event.key == K_LEFT or event.key == K_a):
                     movingLeft = False
-                elif (event.key == K_RIGHT):
+                elif (event.key == K_RIGHT or event.key == K_d):
                     movingRight = False
-                elif (event.key == K_DOWN):
+                elif (event.key == K_DOWN or event.key == K_s):
                     movingDown = False
                 elif (event.key == K_m):
                     if(MUTE == 0):
@@ -247,7 +255,7 @@ def runGame():
                     lastMoveSidewaysTime = time.time()
 
                 # rotating block (if there is room to rotate)
-                elif (event.key == K_UP):
+                elif (event.key == K_UP or event.key == K_w):
                     # moves to next value in rotation index (% part rolls over value to zero if it exceeds total number of possible rotations)
                     # e.g. 3%4 = 3, 4%4 = 0, 5%4 = 1. Remember, 4 rotations are counted 0-3 because COMPUTERS!
                     fallingPiece['rotation'] = (fallingPiece['rotation'] + 1) % len(PIECES[fallingPiece['shape']])
@@ -317,10 +325,10 @@ def runGame():
         drawBoard(board)
         drawStatus(score, level, output_string)
         drawNextPiece(nextPiece)
-        img1 = pygame.image.load('left_side.png')
-        img2 = pygame.image.load('right_side.png')
-        DISPLAYSURF.blit(img1, (0, 0))
-        DISPLAYSURF.blit(img2, (428, 280))
+        left_side = pygame.image.load('left_side.png')
+        right_side = pygame.image.load('right_side.png')
+        DISPLAYSURF.blit(left_side, (0, 0))
+        DISPLAYSURF.blit(right_side, (428, 280))
         if fallingPiece != None:
             drawPiece(fallingPiece)
 
@@ -351,22 +359,41 @@ def checkForKeyPress():
 def showTextScreen(text):
     # This function displays large text in the
     # center of the screen until a key is pressed.
+    if(text == 'pause'):
+        # Draw the text drop shadow
+        titleSurf, titleRect = makeTextObjs(text, BIGFONT, TEXTSHADOWCOLOR)
+        titleRect.center = (int(WINDOWWIDTH / 2), int(WINDOWHEIGHT / 2)-52)
+        DISPLAYSURF.blit(titleSurf, titleRect)
+        # Draw the text
+        titleSurf, titleRect = makeTextObjs(text, BIGFONT, TEXTCOLOR)
+        titleRect.center = (int(WINDOWWIDTH / 2) - 3, int(WINDOWHEIGHT / 2) - 55)
+        DISPLAYSURF.blit(titleSurf, titleRect)
+    else:
+        titleSurf, titleRect = makeTextObjs(text, BIGFONT, TEXTSHADOWCOLOR)
+        titleRect.center = (int(WINDOWWIDTH/2), int(WINDOWHEIGHT/2))
+        DISPLAYSURF.blit(titleSurf, titleRect)
 
-    # Draw the text drop shadow
-    titleSurf, titleRect = makeTextObjs(text, BIGFONT, TEXTSHADOWCOLOR)
-    titleRect.center = (int(WINDOWWIDTH/2), int(WINDOWHEIGHT/2))
-    DISPLAYSURF.blit(titleSurf, titleRect)
 
-    # Draw the text
-    titleSurf, titleRect = makeTextObjs(text, BIGFONT, TEXTCOLOR)
-    titleRect.center = (int(WINDOWWIDTH/2) - 3, int(WINDOWHEIGHT/2) - 3)
-    DISPLAYSURF.blit(titleSurf, titleRect)
+        titleSurf, titleRect = makeTextObjs(text, BIGFONT, TEXTCOLOR)
+        titleRect.center = (int(WINDOWWIDTH/2) - 3, int(WINDOWHEIGHT/2) - 3)
+        DISPLAYSURF.blit(titleSurf, titleRect)
 
-    # Draw the additional "Press a key to play." text.
-    pressKeySurf, pressKeyRect = makeTextObjs('Press any key to ROCK!', BASICFONT, TEXTCOLOR)
-    pressKeyRect.center = (int(WINDOWWIDTH/2), int(WINDOWHEIGHT/2) + 100)
-    DISPLAYSURF.blit(pressKeySurf, pressKeyRect)
-
+    if(text == ' '):
+        initial_diplay = pygame.image.load('start_ending.png')
+        DISPLAYSURF.blit(initial_diplay, (0, 0))
+        # Draw the additional "Press a key to play." text.
+        pressKeySurf, pressKeyRect = makeTextObjs(' ', BASICFONT, TEXTCOLOR)
+        pressKeyRect.center = (int(WINDOWWIDTH/2), int(WINDOWHEIGHT/2) + 100)
+        DISPLAYSURF.blit(pressKeySurf, pressKeyRect)
+    elif(text == 'THE END'):
+        pressKeySurf, pressKeyRect = makeTextObjs('Do you want to play again? Press any key to ROCK!', BASICFONT, TEXTCOLOR)
+        pressKeyRect.center = (int(WINDOWWIDTH / 2), int(WINDOWHEIGHT / 2) + 100)
+        DISPLAYSURF.blit(pressKeySurf, pressKeyRect)
+    else:
+        pressKeySurf, pressKeyRect = makeTextObjs('Press any key to ROCK!', BASICFONT,
+                                                  TEXTCOLOR)
+        pressKeyRect.center = (int(WINDOWWIDTH / 2), int(WINDOWHEIGHT / 2) + 100)
+        DISPLAYSURF.blit(pressKeySurf, pressKeyRect)
     while checkForKeyPress() == None:
         pygame.display.update()
         FPSCLOCK.tick()
