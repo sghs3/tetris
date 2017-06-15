@@ -17,15 +17,15 @@
 
      * 기본 속도는 -0.27로 하면 레벨 업 당 0.02씩 빨라진다.
 
-       sorece
+           sorece
 
-         def calculateLevelAndFallFreq(score):
+             def calculateLevelAndFallFreq(score):
 
-            level = int(score / 10) + 1
+                level = int(score / 10) + 1
 
-            fallFreq = 0.27 - (level * 0.02)
+                fallFreq = 0.27 - (level * 0.02)
 
-            return level, fallFreq
+                return level, fallFreq
 
      -추가적인 기능
 
