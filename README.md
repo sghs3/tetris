@@ -17,15 +17,15 @@
 
      * 기본 속도는 -0.27로 하면 레벨 업 당 0.02씩 빨라진다.
 
-       (sorece
+       sorece
 
          def calculateLevelAndFallFreq(score):
 
-           level = int(score / 10) + 1
+            level = int(score / 10) + 1
 
-           fallFreq = 0.27 - (level * 0.02)
+            fallFreq = 0.27 - (level * 0.02)
 
-           return level, fallFreq)
+            return level, fallFreq
 
      -추가적인 기능
 
@@ -47,7 +47,7 @@
 
      -기획했던 기능
 
-     *영상을 연동해서 특정한 키를 누르게 되면 영상을 실행하려함
+    *영상을 연동해서 특정한 키를 누르게 되면 영상을 실행하려함
 
      -moivepy라는 라이브러리를 인스톨하고 구글링을 해봐도 계속 에러가 생김
 
