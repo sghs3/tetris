@@ -1,8 +1,10 @@
-#참고 소스 : tetrimino.py
-https://github.com/lucasdtownsend/discotetris
-#한양대학교 ERICA 컴퓨터공학과
+참고 소스 : tetrimino.py
 
-#2013043122 고홍식
+https://github.com/lucasdtownsend/discotetris
+
+한양대학교 ERICA 컴퓨터공학과
+
+2013043122 고홍식
 
   1. 프로젝트에 대한 소개
 
