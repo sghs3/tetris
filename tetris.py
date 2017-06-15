@@ -261,7 +261,7 @@ def runGame():
                     fallingPiece['rotation'] = (fallingPiece['rotation'] + 1) % len(PIECES[fallingPiece['shape']])
                     if not isValidPosition(board, fallingPiece):                                                        # if rotating puts it somewhere illegal...
                         fallingPiece['rotation'] = (fallingPiece['rotation'] - 1) % len(PIECES[fallingPiece['shape']])  # ... rotate it the other way!
-                elif (event.key == K_b): #rotate the other direction (flip the script)
+                elif (event.key == K_q): #rotate the other direction (flip the script)
                     fallingPiece['rotation'] = (fallingPiece['rotation'] - 1) % len(PIECES[fallingPiece['shape']])
                     if not isValidPosition(board, fallingPiece):
                         fallingPiece['rotation'] = fallingPiece['rotation'] + 1 % len(PIECES[fallingPiece['shape']])
@@ -326,9 +326,9 @@ def runGame():
         drawStatus(score, level, output_string)
         drawNextPiece(nextPiece)
         left_side = pygame.image.load('left_side.png')
-        right_side = pygame.image.load('right_side.png')
-        DISPLAYSURF.blit(left_side, (0, 0))
-        DISPLAYSURF.blit(right_side, (428, 280))
+        right_side = pygame.image.load('right1.png')
+        DISPLAYSURF.blit(left_side, (0, 79))
+        DISPLAYSURF.blit(right_side, (428, 255))
         if fallingPiece != None:
             drawPiece(fallingPiece)
 
